@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <!-- 设置字符编码，确保页面正确显示中文 -->
+    <meta charset="UTF-8">
+    <!-- 使页面在移动设备上能够正确缩放，提升移动端体验 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGIS数据可视化平台</title>
+    
+    <!-- 引入Leaflet CSS库，用于地图显示和交互 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <!-- 引入Google字体Noto Sans SC，用于更好的中文显示效果 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入Font Awesome图标库，提供丰富的图标资源 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- 引入Chart.js库，用于绘制各种类型的图表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* 定义全局变量，方便样式调整 */
+        :root {
+            --primary: #2563eb; /* 主色调 */
+            --bg: #f8fafc;      /* 背景色 */
+            --text: #1e293b;    /* 文字色 */
+            --border: #e2e8f0;  /* 边框色 */
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+            --radius: 0.5rem;   /* 圆角半径 */
+            --transition: all 0.2s ease; /* 过渡效果 */
+        }
+
+        /* 基本页面样式 */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans SC', sans-serif; /* 使用自定义字体 */
+            background: var(--bg); /* 页面背景色 */
+            color: var(--text); /* 页面文字颜色 */
+            line-height: 1.5; /* 行高设置 */
+        }
+        
+        /* 容器样式，限制最大宽度并居中 */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* 页面头部样式 */
+        .header {
+            text-align: center; /* 文字居中 */
+            margin-bottom: 2rem; /* 下边距 */
+            padding: 1rem; /* 内边距 */
+            background: white; /* 背景颜色 */
+            border-radius: var(--radius); /* 圆角 */
+            box-shadow: var(--shadow); /* 阴影效果 */
+        }
+        
+        /* 标题样式 */
+        .header h1 {
+            font-size: 2.5rem; /* 字体大小 */
+            font-weight: 700; /* 字体粗细 */
+            margin: 0; /* 移除默认外边距 */
+            background: linear-gradient(45deg, var(--primary), #7c3aed); /* 渐变背景 */
+            background-clip: text; /* 背景裁剪到文本 */
+            -webkit-background-clip: text; /* 兼容性处理 */
+            -webkit-text-fill-color: transparent; /* 文本颜色透明 */
+        }
+        
+        /* 副标题样式 */
+        .header h2 {
+            font-size: 1.25rem; /* 字体大小 */
+            color: #64748b; /* 文字颜色 */
+            margin: 0.5rem 0 0; /* 上下边距 */
+        }
+
+        /* 主内容区布局 */
+        .content {
+            display: grid; /* 使用网格布局 */
+            grid-template-columns: 300px 1fr; /* 左侧栏宽度固定，右侧自动扩展 */
+            gap: 2rem; /* 列间距 */
+            background: white; /* 背景颜色 */
+            padding: 1.5rem; /* 内边距 */
+            border-radius: var(--radius); /* 圆角 */
+            box-shadow: var(--shadow); /* 阴影效果 */
+            margin-bottom: 2rem; /* 下边距 */
+            align-items: start; /* 对齐方式 */
+        }
+        
+        /* 侧边栏样式 */
+        .sidebar {
+            padding: 1.5rem; /* 内边距 */
+            border-radius: var(--radius); /* 圆角 */
+            border: 1px solid var(--border); /* 边框 */
+            height: calc(100% - 3rem); /* 高度计算 */
+        }
+
+        /* 输入组样式 */
+        .input-group {
+            margin-bottom: 1.5rem; /* 下边距 */
+        }
+        
+        /* 标签样式 */
+        .label {
+            display: block; /* 占一行 */
+            font-size: 0.875rem; /* 字体大小 */
+            font-weight: 500; /* 字体粗细 */
+            margin-bottom: 0.5rem; /* 下边距 */
+            color: var(--text); /* 文字颜色 */
+        }
+        
+        /* 输入框和选择框样式 */
+        .input, select {
+            width: 100%; /* 宽度占满父元素 */
+            padding: 0.75rem; /* 内边距 */
+            border: 1px solid var(--border); /* 边框 */
+            border-radius: var(--radius); /* 圆角 */
+            font-size: 0.875rem; /* 字体大小 */
+            transition: var(--transition); /* 过渡效果 */
+        }
+        
+        /* 输入框和选择框悬停样式 */
+        .input:hover, select:hover {
+            border-color: var(--primary); /* 改变边框颜色 */
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            width: 100%; /* 宽度占满父元素 */
+            padding: 0.75rem; /* 内边距 */
+            background: var(--primary); /* 背景颜色 */
+            color: white; /* 文字颜色 */
+            border: none; /* 无边框 */
+            border-radius: var(--radius); /* 圆角 */
+            font-weight: 500; /* 字体粗细 */
+            cursor: pointer; /* 鼠标指针样式 */
+            transition: var(--transition); /* 过渡效果 */
+            display: flex; /* 灵活布局 */
+            align-items: center; /* 垂直居中 */
+            justify-content: center; /* 水平居中 */
+            gap: 0.5rem; /* 图标与文字间距 */
+            margin-bottom: 1rem; /* 下边距 */
+        }
+        
+        /* 按钮悬停样式 */
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px); /* 微小位移 */
+            filter: brightness(110%); /* 提亮效果 */
+        }
+        
+        /* 按钮禁用样式 */
+        .btn:disabled {
+            background: #cbd5e1; /* 灰色背景 */
+            cursor: not-allowed; /* 禁止点击 */
+        }
+
+        /* 地图容器样式 */
+        #map {
+            height: calc(100% - 2rem); /* 高度计算 */
+            min-height: 500px; /* 最小高度 */
+            border-radius: var(--radius); /* 圆角 */
+            box-shadow: var(--shadow); /* 阴影效果 */
+        }
+
+        /* 信息和图例样式 */
+        .info, .legend {
+            padding: 1rem; /* 内边距 */
+            background: white; /* 背景颜色 */
+            border-radius: var(--radius); /* 圆角 */
+            box-shadow: var(--shadow); /* 阴影效果 */
+        }
+
+        /* 信息和图例标题样式 */
+        .info h4, .legend h4 {
+            margin: 0 0 0.75rem; /* 上下边距 */
+            color: var(--text); /* 文字颜色 */
+            font-size: 0.875rem; /* 字体大小 */
+            font-weight: 600; /* 字体粗细 */
+            display: flex; /* 灵活布局 */
+            align-items: center; /* 垂直居中 */
+            gap: 0.5rem; /* 图标与文字间距 */
+        }
+
+        /* 信息表格样式 */
+        .info table {
+            width: 100%; /* 宽度占满父元素 */
+            border-collapse: collapse; /* 边框合并 */
+        }
+
+        /* 信息表格单元格样式 */
+        .info td {
+            padding: 0.5rem; /* 内边距 */
+            border: 1px solid var(--border); /* 边框 */
+            font-size: 0.875rem; /* 字体大小 */
+        }
+
+        /* 图例项样式 */
+        .legend-item {
+            display: flex; /* 灵活布局 */
+            align-items: center; /* 垂直居中 */
+            margin-bottom: 0.25rem; /* 下边距 */
+            font-size: 0.875rem; /* 字体大小 */
+        }
+
+        /* 图例图标样式 */
+        .legend i {
+            display: inline-block; /* 行内块级元素 */
+            width: 1.25rem; /* 宽度 */
+            height: 1.25rem; /* 高度 */
+            margin-right: 0.5rem; /* 右边距 */
+            opacity: 0.8; /* 透明度 */
+            border: 1px solid rgba(0,0,0,0.2); /* 边框 */
+            border-radius: 0.25rem; /* 圆角 */
+        }
+        
+
+
+        
+
+
+
+
+        /* 整体布局调整 */
+        .content {
+            display: grid; /* 将容器设置为网格布局 */
+            grid-template-columns: 300px 1fr; /* 定义两列，第一列固定为300像素，第二列占据剩余空间 */
+            grid-template-rows: auto; /* 行的高度根据内容自动调整 */
+            gap: 2rem; /* 设置网格中行与列之间的间距为2rem */
+            background: white; /* 设置背景颜色为白色 */
+            padding: 1.5rem; /* 内边距为1.5rem */
+            border-radius: var(--radius); /* 使用CSS变量设置圆角半径 */
+            box-shadow: var(--shadow); /* 使用CSS变量设置阴影效果 */
+            margin-bottom: 2rem; /* 下外边距为2rem */
+            align-items: stretch; /* 网格项拉伸以填满整个网格区域的高度 */
+        }
+
+        /* 地图容器样式调整 */
+        #map {
+            height: 100%; /* 让地图占满可用高度 */
+            min-height: 500px; /* 最小高度设置 */
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        
+
+
+
+
+
+
+        /* 状态提示信息样式 */
+        #status {
+            margin: 1rem 0; /* 上下边距 */
+            padding: 1rem; /* 内边距 */
+            border-radius: var(--radius); /* 圆角 */
+            font-size: 0.875rem; /* 字体大小 */
+            display: none; /* 默认隐藏 */
+            position: relative; /* 相对定位 */
+            bottom: 0; /* 底部对齐 */
+        }
+
+        /* 不同状态下的背景和文字颜色 */
+        .loading { background: #fef3c7; color: #92400e; }
+        .success { background: #dcfce7; color: #166534; }
+        .error { background: #fee2e2; color: #991b1b; }
+
+        /* 数据筛选区域样式 */
+        .filter-section {
+            margin-top: 1rem; /* 上边距 */
+            padding: 1rem; /* 内边距 */
+            background: #f8fafc; /* 背景颜色 */
+            border-radius: var(--radius); /* 圆角 */
+        }
+
+        /* 筛选条件组样式 */
+        .filter-group {
+            display: flex; /* 灵活布局 */
+            gap: 0.5rem; /* 组间间距 */
+            margin-bottom: 1rem; /* 下边距 */
+        }
+
+        /* 筛选输入框样式 */
+        .filter-input {
+            flex: 1; /* 自动扩展 */
+        }
+
+        /* 图表容器样式 */
+        .charts-container {
+            display: grid; /* 使用网格布局 */
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* 自适应列宽 */
+            gap: 2rem; /* 列间距 */
+            margin-top: 2rem; /* 上边距 */
+            padding: 1.5rem; /* 内边距 */
+            background: white; /* 背景颜色 */
+            border-radius: var(--radius); /* 圆角 */
+            box-shadow: var(--shadow); /* 阴影效果 */
+        }
+
+        /* 单个图表样式 */
+        .chart-wrapper {
+            background: white; /* 背景颜色 */
+            padding: 1rem; /* 内边距 */
+            border-radius: var(--radius); /* 圆角 */
+            box-shadow: var(--shadow); /* 阴影效果 */
+        }
+
+        /* 图表控制按钮样式 */
+        .chart-controls {
+            display: flex; /* 灵活布局 */
+            gap: 1rem; /* 按钮间距 */
+            margin-bottom: 1rem; /* 下边距 */
+        }
+
+        /* 文件列表样式 */
+        .file-list {
+            margin: 1rem 0; /* 上下边距 */
+            padding: 0; /* 内边距 */
+            list-style: none; /* 移除默认样式 */
+        }
+
+        /* 单个文件项样式 */
+        .file-item {
+            display: flex; /* 灵活布局 */
+            align-items: center; /* 垂直居中 */
+            justify-content: space-between; /* 左右对齐 */
+            padding: 0.5rem; /* 内边距 */
+            background: #f8fafc; /* 背景颜色 */
+            border-radius: var(--radius); /* 圆角 */
+            margin-bottom: 0.5rem; /* 下边距 */
+        }
+
+        /* 文件项中的删除按钮样式 */
+        .file-item button {
+            padding: 0.25rem 0.5rem; /* 内边距 */
+            background: #ef4444; /* 背景颜色 */
+            color: white; /* 文字颜色 */
+            border: none; /* 无边框 */
+            border-radius: var(--radius); /* 圆角 */
+            cursor: pointer; /* 鼠标指针样式 */
+        }
+
+        /* 响应式设计：屏幕宽度小于1024px时的样式 */
+        @media (max-width: 1024px) {
+            .content { grid-template-columns: 1fr; } /* 单列布局 */
+            .sidebar { order: -1; height: auto; } /* 侧边栏位置调整 */
+            #map { height: 500px; } /* 固定地图高度 */
+        }
+
+        /* 响应式设计：屏幕宽度小于640px时的样式 */
+        @media (max-width: 640px) {
+            .container { padding: 1rem; } /* 减少内边距 */
+            .header h1 { font-size: 2rem; } /* 减小标题字体大小 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>基于 Web 的环境数据可视化平台</h1>
+            <h3>课设</h3>
+        </header>
+
+        <div class="content">
+            <aside class="sidebar">
+                <!-- 文件上传区域 -->
+                <div class="input-group">
+                    <label class="label" for="fileInput">
+                        <i class="fas fa-file-upload"></i> 上传数据文件
+                    </label>
+                    <input type="file" id="fileInput" accept=".csv" multiple class="input">
+                </div>
+                
+                <!-- 已上传文件列表 -->
+                <ul id="fileList" class="file-list"></ul>
+                
+                <!-- 加载数据按钮 -->
+                <button id="uploadButton" class="btn" disabled>
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>加载数据</span>
+                </button>
+
+                <!-- 数据选择下拉菜单 -->
+                <div class="input-group">
+                    <label class="label" for="dataSelect">
+                        <i class="fas fa-chart-bar"></i> 选择显示数据
+                    </label>
+                    <select id="dataSelect"></select>
+                </div>
+
+                <!-- 数据筛选区域 -->
+                                <!-- 筛选部分的容器 -->
+                <div class="filter-section">
+                    <!-- 标签：数据筛选 -->
+                    <label class="label">
+                        <i class="fas fa-filter"></i> 数据筛选
+                    </label>
+
+                    <!-- 筛选条件组 -->
+                    <div class="filter-group">
+                        <!-- 字段选择下拉菜单 -->
+                        <select id="filterField" class="filter-input">
+                            <!-- 默认选项，提示用户选择字段 -->
+                            <option value="">选择字段</option>
+                        </select>
+
+                        <!-- 操作符选择下拉菜单 -->
+                        <select id="filterOperator" class="filter-input">
+                            <!-- 大于操作符选项 -->
+                            <option value=">">&gt;</option>
+                            <!-- 小于操作符选项 -->
+                            <option value="<">&lt;</option>
+                            <!-- 等于操作符选项 -->
+                            <option value="=">=</option>
+                        </select>
+
+                        <!-- 输入数值的文本框 -->
+                        <input type="number" id="filterValue" class="filter-input" placeholder="值">
+                    </div>
+
+                    <!-- 应用筛选按钮 -->
+                    <button id="applyFilter" class="btn">
+                        <i class="fas fa-check"></i> 应用筛选
+                    </button>
+
+                    <!-- 保存筛选结果按钮 -->
+                    <button id="saveFilter" class="btn">
+                        <i class="fas fa-download"></i> 保存筛选结果
+                    </button>
+                </div>
+
+                <!-- 状态提示信息 -->
+                <div id="status"></div>
+            </aside>
+
+            <!-- 地图显示区域 -->
+            <main>
+                <div id="map"></div>
+            </main>
+        </div>
+
+        <!-- 图表容器，用于容纳多个图表组件 -->
+        <div class="charts-container">
+            <!-- 单个图表组件 -->
+            <div class="chart-wrapper">
+                <!-- 图表控制区域，包含选择图表类型和数据源的下拉菜单 -->
+                <div class="chart-controls">
+                    <!-- 选择图表类型（柱状图、折线图、饼图） -->
+                    <select id="chartType1" class="input">
+                        <option value="bar">柱状图</option>
+                        <option value="line">折线图</option>
+                        <option value="pie">饼图</option>
+                    </select>
+                    <!-- 选择数据源 -->
+                    <select id="chartData1" class="input">
+                        <option value="">选择数据</option>
+                    </select>
+                </div>
+                <!-- 图表绘制区域，使用canvas标签定义 -->
+                <canvas id="chart1"></canvas>
+            </div>
+
+            <!-- 另一个图表组件，结构与上一个相同 -->
+            <div class="chart-wrapper">
+                <!-- 图表控制区域 -->
+                <div class="chart-controls">
+                    <!-- 选择图表类型 -->
+                    <select id="chartType2" class="input">
+                        <option value="bar">柱状图</option>
+                        <option value="line">折线图</option>
+                        <option value="pie">饼图</option>
+                    </select>
+                    <!-- 选择数据源 -->
+                    <select id="chartData2" class="input">
+                        <option value="">选择数据</option>
+                    </select>
+                </div>
+                <!-- 图表绘制区域 -->
+                <canvas id="chart2"></canvas>
+            </div>
+        </div>
+
+    <!-- 引入Leaflet JS库，用于地图交互 -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- 引入自定义的JavaScript文件 -->
+    <script src="main.js"></script>
+    <!-- 引入高德地图API -->
+    <script src="https://webapi.amap.com/maps?v=1.4.15&key=12de96083d18adb20d167860f4309762"></script>
+</body>
+</html>
